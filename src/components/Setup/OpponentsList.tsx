@@ -4,14 +4,26 @@ interface Props {
   opponents: BoatClass[];
   onRemove: (c: BoatClass) => void;
   onAdd: () => void;
+  onClear: () => void;
 }
 
-export function OpponentsList({ opponents, onRemove, onAdd }: Props) {
+export function OpponentsList({ opponents, onRemove, onAdd, onClear }: Props) {
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-        Avversari (classi presenti)
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+          Avversari (classi presenti)
+        </h3>
+        {opponents.length > 0 && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-xs text-slate-400 hover:text-red-400 underline-offset-2 hover:underline"
+          >
+            Svuota
+          </button>
+        )}
+      </div>
 
       {opponents.length === 0 ? (
         <p className="text-slate-500 text-sm italic">

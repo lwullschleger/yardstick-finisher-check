@@ -30,18 +30,23 @@ async function loadPdfText(): Promise<string> {
   if (!res.ok) throw new Error(`Download PDF failed: ${res.status}`);
   const buffer = Buffer.from(await res.arrayBuffer());
 
-  // Dynamic import per non rendere pdf-parse una dep obbligatoria.
-  let pdfParse: (b: Buffer) => Promise<{ text: string }>;
+  // pdf-parse@2.x espone una classe PDFParse (ESM, basata su pdfjs-dist).
+  let PDFParse: any;
   try {
-    const mod = await import('pdf-parse');
-    pdfParse = (mod as any).default ?? (mod as any);
-  } catch {
+    const mod: any = await import('pdf-parse');
+    PDFParse = mod.PDFParse ?? mod.default?.PDFParse ?? mod.default;
+    if (typeof PDFParse !== 'function') {
+      throw new Error(`PDFParse non è una classe (got ${typeof PDFParse})`);
+    }
+  } catch (e) {
     throw new Error(
-      'pdf-parse non installato. Esegui: pnpm add -D pdf-parse @types/pdf-parse',
+      `pdf-parse non disponibile. Esegui: pnpm add -D pdf-parse\n(detail: ${(e as Error).message})`,
     );
   }
-  const { text } = await pdfParse(buffer);
-  return text;
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
+  const result = await parser.getText();
+  await parser.destroy?.();
+  return result.text as string;
 }
 
 function parseClasses(text: string): BoatClass[] {

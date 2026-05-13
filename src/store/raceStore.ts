@@ -1,36 +1,50 @@
 import { create } from 'zustand';
 import {
-  ONE_MINUTE_MS,
   bumpMinute as bumpMinuteFn,
   initialCountdownTarget,
-  snapToNearestMinute,
+  snapRemainingToNearestMinute,
 } from '../lib/countdown';
 import type { AppPhase, BoatClass } from '../types';
 
 const LAST_MY_CLASS_KEY = 'yfc:lastMyClass';
+const OPPONENTS_KEY = 'yfc:opponents';
 
-function readLastMyClass(): BoatClass | null {
+function readJson<T>(key: string): T | null {
   if (typeof localStorage === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(LAST_MY_CLASS_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
-    return JSON.parse(raw) as BoatClass;
+    return JSON.parse(raw) as T;
   } catch {
     return null;
   }
 }
 
-function writeLastMyClass(c: BoatClass | null): void {
+function writeJson(key: string, value: unknown): void {
   if (typeof localStorage === 'undefined') return;
   try {
-    if (c) {
-      localStorage.setItem(LAST_MY_CLASS_KEY, JSON.stringify(c));
-    } else {
-      localStorage.removeItem(LAST_MY_CLASS_KEY);
-    }
+    if (value == null) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(value));
   } catch {
     // ignore
   }
+}
+
+function isValidBoatClass(x: unknown): x is BoatClass {
+  if (!x || typeof x !== 'object') return false;
+  const o = x as Record<string, unknown>;
+  return typeof o.name === 'string' && typeof o.ys === 'number' && typeof o.category === 'string';
+}
+
+function readMyClass(): BoatClass | null {
+  const v = readJson<BoatClass>(LAST_MY_CLASS_KEY);
+  return isValidBoatClass(v) ? v : null;
+}
+
+function readOpponents(): BoatClass[] {
+  const v = readJson<BoatClass[]>(OPPONENTS_KEY);
+  if (!Array.isArray(v)) return [];
+  return v.filter(isValidBoatClass).sort((a, b) => a.ys - b.ys);
 }
 
 export interface RaceState {
@@ -44,6 +58,7 @@ export interface RaceState {
   setMyClass: (c: BoatClass) => void;
   addOpponent: (c: BoatClass) => void;
   removeOpponent: (ys: number, name: string) => void;
+  clearOpponents: () => void;
   startCountdown: () => void;
   syncToNearestMinute: () => void;
   bumpMinute: (delta: 1 | -1) => void;
@@ -55,29 +70,34 @@ export interface RaceState {
 
 export const useRaceStore = create<RaceState>((set, get) => ({
   phase: 'setup',
-  myClass: readLastMyClass(),
-  opponentClasses: [],
+  myClass: readMyClass(),
+  opponentClasses: readOpponents(),
   countdownTargetMs: null,
   raceStartMs: null,
   finishedAtMs: null,
 
   setMyClass: (c) => {
-    writeLastMyClass(c);
+    writeJson(LAST_MY_CLASS_KEY, c);
     set({ myClass: c });
   },
 
   addOpponent: (c) => {
     const { opponentClasses } = get();
-    // Unicità per (ys, name)
     if (opponentClasses.some((o) => o.ys === c.ys && o.name === c.name)) return;
     const next = [...opponentClasses, c].sort((a, b) => a.ys - b.ys);
+    writeJson(OPPONENTS_KEY, next);
     set({ opponentClasses: next });
   },
 
   removeOpponent: (ys, name) => {
-    set({
-      opponentClasses: get().opponentClasses.filter((o) => !(o.ys === ys && o.name === name)),
-    });
+    const next = get().opponentClasses.filter((o) => !(o.ys === ys && o.name === name));
+    writeJson(OPPONENTS_KEY, next);
+    set({ opponentClasses: next });
+  },
+
+  clearOpponents: () => {
+    writeJson(OPPONENTS_KEY, []);
+    set({ opponentClasses: [] });
   },
 
   startCountdown: () => {
@@ -93,18 +113,14 @@ export const useRaceStore = create<RaceState>((set, get) => ({
   syncToNearestMinute: () => {
     const target = get().countdownTargetMs;
     if (target == null) return;
-    // Lo snap è riferito al clock di sistema (timestamp assoluti),
-    // ma garantiamo almeno 1 secondo nel futuro per evitare GO immediato indesiderato.
-    let snapped = snapToNearestMinute(target);
-    if (snapped - Date.now() < 1_000) snapped += ONE_MINUTE_MS;
-    set({ countdownTargetMs: snapped });
+    const now = Date.now();
+    set({ countdownTargetMs: now + snapRemainingToNearestMinute(target - now) });
   },
 
   bumpMinute: (delta) => {
     const target = get().countdownTargetMs;
     if (target == null) return;
     const bumped = bumpMinuteFn(target, delta);
-    // Non permettere bumper -1 sotto il now corrente.
     if (delta === -1 && bumped - Date.now() < 1_000) return;
     set({ countdownTargetMs: bumped });
   },
@@ -122,11 +138,9 @@ export const useRaceStore = create<RaceState>((set, get) => ({
   },
 
   reset: () => {
-    const keep = get().myClass;
+    // Mantieni mia classe e avversari (persistiti). Resetta solo lo stato di regata.
     set({
       phase: 'setup',
-      myClass: keep,
-      opponentClasses: [],
       countdownTargetMs: null,
       raceStartMs: null,
       finishedAtMs: null,

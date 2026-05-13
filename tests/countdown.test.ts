@@ -5,6 +5,7 @@ import {
   bumpMinute,
   initialCountdownTarget,
   remainingMs,
+  snapRemainingToNearestMinute,
   snapToNearestMinute,
 } from '../src/lib/countdown';
 
@@ -36,6 +37,26 @@ describe('snapToNearestMinute', () => {
   it('arrotonda a 30s al minuto successivo (banker rounding via round)', () => {
     const base = 60_000;
     expect(snapToNearestMinute(base + 30_000)).toBe(base + ONE_MINUTE_MS);
+  });
+});
+
+describe('snapRemainingToNearestMinute', () => {
+  it('arrotonda 4:37 → 5:00', () => {
+    expect(snapRemainingToNearestMinute(4 * 60_000 + 37_000)).toBe(5 * 60_000);
+  });
+
+  it('arrotonda 4:20 → 4:00', () => {
+    expect(snapRemainingToNearestMinute(4 * 60_000 + 20_000)).toBe(4 * 60_000);
+  });
+
+  it('non scende sotto 1 minuto', () => {
+    expect(snapRemainingToNearestMinute(20_000)).toBe(ONE_MINUTE_MS);
+    expect(snapRemainingToNearestMinute(0)).toBe(ONE_MINUTE_MS);
+    expect(snapRemainingToNearestMinute(-5_000)).toBe(ONE_MINUTE_MS);
+  });
+
+  it('lascia invariati i multipli esatti', () => {
+    expect(snapRemainingToNearestMinute(5 * 60_000)).toBe(5 * 60_000);
   });
 });
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { compensatedTime, rowStatus, secondsToTransition } from '../../lib/compensated';
+import { YS_RANGE } from '../../lib/ysRange';
 import type { BoatClass } from '../../types';
 import { ClassRow } from './ClassRow';
 
@@ -13,61 +14,69 @@ interface Props {
 export function ResultsList({ opponents, myTimeMs, myYs, nowFromStartMs }: Props) {
   const myCompMs = useMemo(() => compensatedTime(myTimeMs, myYs), [myTimeMs, myYs]);
   const containerRef = useRef<HTMLUListElement>(null);
-  const lastFrontierRef = useRef<string | null>(null);
+  const lastFrontierRef = useRef<number | null>(null);
+
+  // Mappa YS → nomi delle classi selezionate con quel YS.
+  const namesByYs = useMemo(() => {
+    const m = new Map<number, string[]>();
+    for (const o of opponents) {
+      const arr = m.get(o.ys) ?? [];
+      arr.push(o.name);
+      m.set(o.ys, arr);
+    }
+    return m;
+  }, [opponents]);
 
   const rows = useMemo(
     () =>
-      opponents
-        .slice()
-        .sort((a, b) => a.ys - b.ys)
-        .map((boat) => {
-          const status = rowStatus(nowFromStartMs, myCompMs, boat.ys);
-          const secs =
-            status === 'red'
-              ? secondsToTransition(nowFromStartMs, myTimeMs, myYs, boat.ys)
-              : null;
-          return { boat, status, secs };
-        }),
-    [opponents, nowFromStartMs, myCompMs, myTimeMs, myYs],
+      YS_RANGE.map((ys) => {
+        const status = rowStatus(nowFromStartMs, myCompMs, ys);
+        const secs =
+          status === 'red' ? secondsToTransition(nowFromStartMs, myTimeMs, myYs, ys) : null;
+        return {
+          ys,
+          names: namesByYs.get(ys) ?? [],
+          status,
+          secs,
+          isMine: ys === myYs,
+        };
+      }),
+    [namesByYs, nowFromStartMs, myCompMs, myTimeMs, myYs],
   );
 
-  // Identifica la frontiera (prima riga rossa partendo dall'alto, lista ordinata YS↑).
+  // Lista ordinata YS ascendente → top = veloci (verdi), bottom = lente (rosse).
+  // La frontiera è la prima riga rossa partendo dall'alto, e si sposta verso il basso
+  // (verso YS maggiori) man mano che T_now cresce.
   const frontierIndex = useMemo(() => rows.findIndex((r) => r.status === 'red'), [rows]);
 
-  // Auto-scroll: centra la frontiera quando si sposta.
   useEffect(() => {
     const list = containerRef.current;
     if (!list) return;
-    const frontierKey = frontierIndex >= 0 ? `${rows[frontierIndex]?.boat.ys}` : 'none';
-    if (lastFrontierRef.current === frontierKey) return;
-    lastFrontierRef.current = frontierKey;
-    if (frontierIndex < 0) return;
+    if (frontierIndex < 0) {
+      lastFrontierRef.current = null;
+      return;
+    }
+    const frontierYs = rows[frontierIndex]?.ys ?? null;
+    if (lastFrontierRef.current === frontierYs) return;
+    lastFrontierRef.current = frontierYs;
     const child = list.children[frontierIndex] as HTMLElement | undefined;
     child?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [frontierIndex, rows]);
-
-  if (opponents.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center px-6 py-10">
-        <p className="text-slate-400 text-center text-sm">
-          Nessun avversario inserito. Torna a setup per aggiungere classi avversarie.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <ul
       ref={containerRef}
       className="flex-1 overflow-y-auto divide-y divide-slate-950/30"
-      aria-label="Stato classi avversarie"
+      aria-label="Stato per ogni Yardstick"
     >
-      {rows.map(({ boat, status, secs }) => (
+      {rows.map(({ ys, names, status, secs, isMine }) => (
         <ClassRow
-          key={`${boat.ys}::${boat.name}`}
-          boat={boat}
+          key={ys}
+          ys={ys}
+          names={names}
           status={status}
           secondsToTransition={secs}
+          isMine={isMine}
         />
       ))}
     </ul>

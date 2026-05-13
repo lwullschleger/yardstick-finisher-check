@@ -12,6 +12,7 @@ export function SetupScreen() {
   const setMyClass = useRaceStore((s) => s.setMyClass);
   const addOpponent = useRaceStore((s) => s.addOpponent);
   const removeOpponent = useRaceStore((s) => s.removeOpponent);
+  const clearOpponents = useRaceStore((s) => s.clearOpponents);
   const startCountdown = useRaceStore((s) => s.startCountdown);
 
   const [picker, setPicker] = useState<PickerMode>(null);
@@ -80,6 +81,7 @@ export function SetupScreen() {
           opponents={opponents}
           onRemove={(c) => removeOpponent(c.ys, c.name)}
           onAdd={() => setPicker('opponent')}
+          onClear={clearOpponents}
         />
       </div>
 
