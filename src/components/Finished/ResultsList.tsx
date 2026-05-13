@@ -27,22 +27,27 @@ export function ResultsList({ opponents, myTimeMs, myYs, nowFromStartMs }: Props
     return m;
   }, [opponents]);
 
-  const rows = useMemo(
-    () =>
-      YS_RANGE.map((ys) => {
-        const status = rowStatus(nowFromStartMs, myCompMs, ys);
-        const secs =
-          status === 'red' ? secondsToTransition(nowFromStartMs, myTimeMs, myYs, ys) : null;
-        return {
-          ys,
-          names: namesByYs.get(ys) ?? [],
-          status,
-          secs,
-          isMine: ys === myYs,
-        };
-      }),
-    [namesByYs, nowFromStartMs, myCompMs, myTimeMs, myYs],
-  );
+  const rows = useMemo(() => {
+    const all = YS_RANGE.map((ys) => {
+      const status = rowStatus(nowFromStartMs, myCompMs, ys);
+      const secs =
+        status === 'red' ? secondsToTransition(nowFromStartMs, myTimeMs, myYs, ys) : null;
+      const names = namesByYs.get(ys) ?? [];
+      const isMine = ys === myYs;
+      return { ys, names, status, secs, isMine };
+    });
+    // Visibilità:
+    //  - selezionate o "io": sempre visibili (rosse o verdi)
+    //  - non selezionate verdi: nascoste (non aggiungono informazione)
+    //  - non selezionate rosse: solo le 3 più vicine alla frontiera (YS minore = transition più imminente)
+    let unselectedRedShown = 0;
+    return all.filter((r) => {
+      if (r.names.length > 0 || r.isMine) return true;
+      if (r.status === 'green') return false;
+      unselectedRedShown += 1;
+      return unselectedRedShown <= 3;
+    });
+  }, [namesByYs, nowFromStartMs, myCompMs, myTimeMs, myYs]);
 
   // Lista ordinata YS ascendente → top = veloci (verdi), bottom = lente (rosse).
   // La frontiera è la prima riga rossa partendo dall'alto, e si sposta verso il basso

@@ -54,11 +54,14 @@ export interface RaceState {
   countdownTargetMs: number | null;
   raceStartMs: number | null;
   finishedAtMs: number | null;
+  isDemo: boolean;
 
   setMyClass: (c: BoatClass) => void;
   addOpponent: (c: BoatClass) => void;
   removeOpponent: (ys: number, name: string) => void;
   clearOpponents: () => void;
+  goToSetup: () => void;
+  goToWelcome: () => void;
   startCountdown: () => void;
   syncToNearestMinute: () => void;
   bumpMinute: (delta: 1 | -1) => void;
@@ -66,15 +69,22 @@ export interface RaceState {
   goToRace: () => void;
   finishRace: () => void;
   reset: () => void;
+  // Demo: avvia direttamente la fase race come se fossero trascorsi 30 minuti.
+  startDemo: () => void;
+  // Demo: aggiusta il tempo di regata corrente di ±60s (sposta raceStartMs).
+  adjustDemoElapsed: (deltaSeconds: number) => void;
 }
 
+const DEMO_INITIAL_ELAPSED_MS = 30 * 60 * 1000;
+
 export const useRaceStore = create<RaceState>((set, get) => ({
-  phase: 'setup',
+  phase: 'welcome',
   myClass: readMyClass(),
   opponentClasses: readOpponents(),
   countdownTargetMs: null,
   raceStartMs: null,
   finishedAtMs: null,
+  isDemo: false,
 
   setMyClass: (c) => {
     writeJson(LAST_MY_CLASS_KEY, c);
@@ -100,6 +110,10 @@ export const useRaceStore = create<RaceState>((set, get) => ({
     set({ opponentClasses: [] });
   },
 
+  goToSetup: () => set({ phase: 'setup' }),
+
+  goToWelcome: () => set({ phase: 'welcome' }),
+
   startCountdown: () => {
     if (!get().myClass) return;
     set({
@@ -107,7 +121,32 @@ export const useRaceStore = create<RaceState>((set, get) => ({
       countdownTargetMs: initialCountdownTarget(Date.now()),
       raceStartMs: null,
       finishedAtMs: null,
+      isDemo: false,
     });
+  },
+
+  startDemo: () => {
+    if (!get().myClass) return;
+    // Salta countdown: parte direttamente in race come se fossero passati 30 minuti.
+    set({
+      phase: 'race',
+      countdownTargetMs: null,
+      raceStartMs: Date.now() - DEMO_INITIAL_ELAPSED_MS,
+      finishedAtMs: null,
+      isDemo: true,
+    });
+  },
+
+  adjustDemoElapsed: (deltaSeconds) => {
+    const { isDemo, raceStartMs, phase } = get();
+    if (!isDemo || phase !== 'race' || raceStartMs == null) return;
+    // +1 minuto elapsed = sposta raceStartMs all'indietro di 60s.
+    const next = raceStartMs - deltaSeconds * 1000;
+    // Evita di andare oltre il presente (elapsed negativo) o sopra ~9h.
+    const now = Date.now();
+    if (now - next < 1_000) return;
+    if (now - next > 9 * 3600 * 1000) return;
+    set({ raceStartMs: next });
   },
 
   syncToNearestMinute: () => {
@@ -138,12 +177,14 @@ export const useRaceStore = create<RaceState>((set, get) => ({
   },
 
   reset: () => {
-    // Mantieni mia classe e avversari (persistiti). Resetta solo lo stato di regata.
+    // Mantieni mia classe e avversari (persistiti). Resetta solo lo stato di regata
+    // e torna alla pagina di benvenuto.
     set({
-      phase: 'setup',
+      phase: 'welcome',
       countdownTargetMs: null,
       raceStartMs: null,
       finishedAtMs: null,
+      isDemo: false,
     });
   },
 }));

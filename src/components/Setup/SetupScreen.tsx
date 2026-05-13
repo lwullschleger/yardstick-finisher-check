@@ -13,7 +13,7 @@ export function SetupScreen() {
   const addOpponent = useRaceStore((s) => s.addOpponent);
   const removeOpponent = useRaceStore((s) => s.removeOpponent);
   const clearOpponents = useRaceStore((s) => s.clearOpponents);
-  const startCountdown = useRaceStore((s) => s.startCountdown);
+  const goToWelcome = useRaceStore((s) => s.goToWelcome);
 
   const [picker, setPicker] = useState<PickerMode>(null);
 
@@ -33,11 +33,22 @@ export function SetupScreen() {
   return (
     <>
       <div className="flex-1 overflow-y-auto px-5 py-6 space-y-8">
-        <header>
-          <h1 className="text-2xl font-bold text-slate-100">Yardstick Finisher Check</h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Setup regata: scegli la tua classe e le classi avversarie presenti.
-          </p>
+        <header className="flex items-start gap-3">
+          <button
+            type="button"
+            onClick={goToWelcome}
+            disabled={!myClass}
+            aria-label="Torna alla home"
+            className="h-11 w-11 flex items-center justify-center rounded-full bg-slate-800 border border-slate-700 text-slate-200 text-lg shrink-0 disabled:opacity-40"
+          >
+            ‹
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-slate-100 leading-tight">Setup regata</h1>
+            <p className="text-sm text-slate-400 mt-0.5">
+              Scegli la tua classe e gli avversari presenti.
+            </p>
+          </div>
         </header>
 
         <section className="space-y-3">
@@ -88,11 +99,11 @@ export function SetupScreen() {
       <div className="sticky bottom-0 border-t border-slate-800 bg-slate-950/80 backdrop-blur px-5 py-4 safe-pb">
         <button
           type="button"
+          onClick={goToWelcome}
           disabled={!myClass}
-          onClick={startCountdown}
           className="w-full h-14 rounded-xl font-semibold text-lg bg-emerald-600 text-white disabled:bg-slate-800 disabled:text-slate-500"
         >
-          Avvia countdown 5'
+          {myClass ? 'Fine setup' : 'Seleziona la tua classe per continuare'}
         </button>
       </div>
 

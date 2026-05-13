@@ -1,6 +1,13 @@
 import { forwardRef, memo } from 'react';
 import type { RowStatus } from '../../lib/compensated';
 
+function formatTransition(s: number): string {
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}'${String(r).padStart(2, '0')}"`;
+}
+
 interface Props {
   ys: number;
   names: string[];          // classi selezionate con questo YS (può essere vuoto)
@@ -47,7 +54,7 @@ export const ClassRow = memo(
         <div className="ml-3 shrink-0 text-right">
           {isRed ? (
             <span className="tabular font-mono font-semibold text-sm">
-              {secondsToTransition != null ? `${secondsToTransition}s` : '—'}
+              {secondsToTransition != null ? formatTransition(secondsToTransition) : '—'}
             </span>
           ) : (
             <span className="text-sm font-semibold">✓</span>
