@@ -8,6 +8,10 @@ import type { AppPhase, BoatClass } from '../types';
 
 const LAST_MY_CLASS_KEY = 'yfc:lastMyClass';
 const OPPONENTS_KEY = 'yfc:opponents';
+const SESSION_KEY = 'yfc:session';
+// Una sessione non-finished più vecchia di 12h al rientro viene scartata,
+// per evitare che una regata dimenticata si presenti come "in corso" alla regata successiva.
+const SESSION_MAX_AGE_MS = 12 * 3600 * 1000;
 
 function readJson<T>(key: string): T | null {
   if (typeof localStorage === 'undefined') return null;
@@ -47,6 +51,52 @@ function readOpponents(): BoatClass[] {
   return v.filter(isValidBoatClass).sort((a, b) => a.ys - b.ys);
 }
 
+type PersistablePhase = 'countdown' | 'race' | 'finished';
+
+interface PersistedSession {
+  phase: PersistablePhase;
+  countdownTargetMs: number | null;
+  raceStartMs: number | null;
+  finishedAtMs: number | null;
+}
+
+function isPersistablePhase(x: unknown): x is PersistablePhase {
+  return x === 'countdown' || x === 'race' || x === 'finished';
+}
+
+function isValidPersistedSession(x: unknown): x is PersistedSession {
+  if (!x || typeof x !== 'object') return false;
+  const o = x as Record<string, unknown>;
+  const numOrNull = (v: unknown) => v === null || typeof v === 'number';
+  return (
+    isPersistablePhase(o.phase) &&
+    numOrNull(o.countdownTargetMs) &&
+    numOrNull(o.raceStartMs) &&
+    numOrNull(o.finishedAtMs)
+  );
+}
+
+function readSession(): PersistedSession | null {
+  const v = readJson<PersistedSession>(SESSION_KEY);
+  if (!isValidPersistedSession(v)) return null;
+  if (v.phase !== 'finished') {
+    const refMs = v.raceStartMs ?? v.countdownTargetMs;
+    if (refMs != null && Date.now() - refMs > SESSION_MAX_AGE_MS) {
+      writeJson(SESSION_KEY, null);
+      return null;
+    }
+  }
+  return v;
+}
+
+function writeSession(s: PersistedSession): void {
+  writeJson(SESSION_KEY, s);
+}
+
+function clearSession(): void {
+  writeJson(SESSION_KEY, null);
+}
+
 export interface RaceState {
   phase: AppPhase;
   myClass: BoatClass | null;
@@ -55,12 +105,16 @@ export interface RaceState {
   raceStartMs: number | null;
   finishedAtMs: number | null;
   isDemo: boolean;
+  // Fase da cui è stata aperta la pagina Help, per tornare indietro al posto giusto.
+  helpReturnPhase: AppPhase | null;
 
   setMyClass: (c: BoatClass) => void;
   addOpponent: (c: BoatClass) => void;
   removeOpponent: (ys: number, name: string) => void;
   clearOpponents: () => void;
   goToSetup: () => void;
+  goToHelp: () => void;
+  exitHelp: () => void;
   goToWelcome: () => void;
   startCountdown: () => void;
   syncToNearestMinute: () => void;
@@ -77,14 +131,19 @@ export interface RaceState {
 
 const DEMO_INITIAL_ELAPSED_MS = 30 * 60 * 1000;
 
+const initialMyClass = readMyClass();
+// Una sessione persistita ha senso solo se la classe è ancora configurata.
+const initialSession = initialMyClass ? readSession() : null;
+
 export const useRaceStore = create<RaceState>((set, get) => ({
-  phase: 'welcome',
-  myClass: readMyClass(),
+  phase: initialSession?.phase ?? 'welcome',
+  myClass: initialMyClass,
   opponentClasses: readOpponents(),
-  countdownTargetMs: null,
-  raceStartMs: null,
-  finishedAtMs: null,
+  countdownTargetMs: initialSession?.countdownTargetMs ?? null,
+  raceStartMs: initialSession?.raceStartMs ?? null,
+  finishedAtMs: initialSession?.finishedAtMs ?? null,
   isDemo: false,
+  helpReturnPhase: null,
 
   setMyClass: (c) => {
     writeJson(LAST_MY_CLASS_KEY, c);
@@ -112,21 +171,42 @@ export const useRaceStore = create<RaceState>((set, get) => ({
 
   goToSetup: () => set({ phase: 'setup' }),
 
+  goToHelp: () => {
+    const { phase } = get();
+    // Non sovrascrivere helpReturnPhase se già in 'help' (no-op difensivo).
+    if (phase === 'help') return;
+    set({ phase: 'help', helpReturnPhase: phase });
+  },
+
+  exitHelp: () => {
+    const { helpReturnPhase } = get();
+    set({ phase: helpReturnPhase ?? 'welcome', helpReturnPhase: null });
+  },
+
   goToWelcome: () => set({ phase: 'welcome' }),
 
   startCountdown: () => {
     if (!get().myClass) return;
+    const countdownTargetMs = initialCountdownTarget(Date.now());
     set({
       phase: 'countdown',
-      countdownTargetMs: initialCountdownTarget(Date.now()),
+      countdownTargetMs,
       raceStartMs: null,
       finishedAtMs: null,
       isDemo: false,
+    });
+    writeSession({
+      phase: 'countdown',
+      countdownTargetMs,
+      raceStartMs: null,
+      finishedAtMs: null,
     });
   },
 
   startDemo: () => {
     if (!get().myClass) return;
+    // Demo non viene mai persistita: azzera eventuale sessione precedente.
+    clearSession();
     // Salta countdown: parte direttamente in race come se fossero passati 30 minuti.
     set({
       phase: 'race',
@@ -150,35 +230,72 @@ export const useRaceStore = create<RaceState>((set, get) => ({
   },
 
   syncToNearestMinute: () => {
-    const target = get().countdownTargetMs;
+    const state = get();
+    const target = state.countdownTargetMs;
     if (target == null) return;
     const now = Date.now();
-    set({ countdownTargetMs: now + snapRemainingToNearestMinute(target - now) });
+    const newTarget = now + snapRemainingToNearestMinute(target - now);
+    set({ countdownTargetMs: newTarget });
+    if (!state.isDemo && state.phase === 'countdown') {
+      writeSession({
+        phase: 'countdown',
+        countdownTargetMs: newTarget,
+        raceStartMs: null,
+        finishedAtMs: null,
+      });
+    }
   },
 
   bumpMinute: (delta) => {
-    const target = get().countdownTargetMs;
+    const state = get();
+    const target = state.countdownTargetMs;
     if (target == null) return;
     const bumped = bumpMinuteFn(target, delta);
     if (delta === -1 && bumped - Date.now() < 1_000) return;
     set({ countdownTargetMs: bumped });
+    if (!state.isDemo && state.phase === 'countdown') {
+      writeSession({
+        phase: 'countdown',
+        countdownTargetMs: bumped,
+        raceStartMs: null,
+        finishedAtMs: null,
+      });
+    }
   },
 
   goToRace: () => {
-    const { countdownTargetMs, phase } = get();
+    const { countdownTargetMs, phase, isDemo } = get();
     if (phase !== 'countdown' || countdownTargetMs == null) return;
     set({ phase: 'race', raceStartMs: countdownTargetMs });
+    if (!isDemo) {
+      writeSession({
+        phase: 'race',
+        countdownTargetMs: null,
+        raceStartMs: countdownTargetMs,
+        finishedAtMs: null,
+      });
+    }
   },
 
   finishRace: () => {
-    const { phase, raceStartMs } = get();
+    const { phase, raceStartMs, isDemo } = get();
     if (phase !== 'race' || raceStartMs == null) return;
-    set({ phase: 'finished', finishedAtMs: Date.now() });
+    const finishedAtMs = Date.now();
+    set({ phase: 'finished', finishedAtMs });
+    if (!isDemo) {
+      writeSession({
+        phase: 'finished',
+        countdownTargetMs: null,
+        raceStartMs,
+        finishedAtMs,
+      });
+    }
   },
 
   reset: () => {
     // Mantieni mia classe e avversari (persistiti). Resetta solo lo stato di regata
-    // e torna alla pagina di benvenuto.
+    // e torna alla pagina di benvenuto, cancellando la sessione persistita.
+    clearSession();
     set({
       phase: 'welcome',
       countdownTargetMs: null,

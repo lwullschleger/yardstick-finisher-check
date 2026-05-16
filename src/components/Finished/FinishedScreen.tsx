@@ -32,12 +32,11 @@ export function FinishedScreen() {
 
   return (
     <div className="flex-1 flex flex-col">
-      <HeaderTimes
-        myClass={myClass}
-        myTimeMs={myTimeMs}
-        myCompMs={myCompMs}
-        liveElapsedMs={liveElapsedMs}
-      />
+      <div className="px-4 pt-4 pb-3 bg-slate-950/80 backdrop-blur">
+        <SlideToConfirm label="Slide to Reset" variant="danger" onConfirm={reset} />
+      </div>
+
+      <HeaderTimes myTimeMs={myTimeMs} myCompMs={myCompMs} liveElapsedMs={liveElapsedMs} />
 
       <ResultsList
         opponents={opponents}
@@ -45,10 +44,6 @@ export function FinishedScreen() {
         myYs={myClass.ys}
         nowFromStartMs={liveElapsedMs}
       />
-
-      <div className="px-4 py-3 border-t border-slate-800 bg-slate-950/80 backdrop-blur safe-pb">
-        <SlideToConfirm label="Slide to Reset" variant="danger" onConfirm={reset} />
-      </div>
     </div>
   );
 }

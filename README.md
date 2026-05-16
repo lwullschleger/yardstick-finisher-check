@@ -1,4 +1,4 @@
-# Yardstick Finisher Check
+# YS Finisher
 
 PWA mobile **personale, offline-first, senza backend** per regatanti che usano il sistema **Yardstick svizzero** (Swiss Sailing) sui laghi.
 
@@ -53,6 +53,10 @@ In caso di problemi di parsing, intervenire manualmente sul JSON di output.
 - Swiss Sailing — Vermessung & Yardstick: <https://www.swiss-sailing.ch/regattieren/vermessung>
 - Reglement Yardstick (PDF DE): [Reglement Yardstick DE 2021](https://www.swiss-sailing.ch/_Resources/Persistent/b/6/8/9/b689aed3bd89d348e4c25fa5cab093539eeb112c/Reglement%20Yardstick_DE_2021.pdf)
 - Yardstickzahlen 2026 (PDF): [Yardstickzahlen 2026](https://www.swiss-sailing.ch/_Resources/Persistent/8/5/6/5/856574101793d127739073b39bde20817a90f594/Yardstickzahlen2026.pdf)
+
+## Documentazione interna
+
+Per il modello di stato, la persistenza, le decisioni di design e cosa è esplicitamente fuori scope, vedi [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Licenza
 

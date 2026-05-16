@@ -1,7 +1,7 @@
 {
-  "name": "yardstick-finisher-check",
+  "name": "ys-finisher",
   "private": true,
-  "version": "0.1.0",
+  "version": "2026.05",
   "type": "module",
   "description": "PWA personale offline-first per regate Yardstick svizzero",
   "license": "MIT",

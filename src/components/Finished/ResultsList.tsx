@@ -38,14 +38,22 @@ export function ResultsList({ opponents, myTimeMs, myYs, nowFromStartMs }: Props
     });
     // Visibilità:
     //  - selezionate o "io": sempre visibili (rosse o verdi)
-    //  - non selezionate verdi: nascoste (non aggiungono informazione)
-    //  - non selezionate rosse: solo le 3 più vicine alla frontiera (YS minore = transition più imminente)
+    //  - non selezionate verdi: solo le 2 più vicine alla frontiera (YS maggiore = transizione più recente)
+    //  - non selezionate rosse: solo le 2 più vicine alla frontiera (YS minore = transizione più imminente)
+    const unselectedGreenTotal = all.reduce(
+      (n, r) => n + (r.names.length === 0 && !r.isMine && r.status === 'green' ? 1 : 0),
+      0,
+    );
+    let unselectedGreenSeen = 0;
     let unselectedRedShown = 0;
     return all.filter((r) => {
       if (r.names.length > 0 || r.isMine) return true;
-      if (r.status === 'green') return false;
+      if (r.status === 'green') {
+        unselectedGreenSeen += 1;
+        return unselectedGreenSeen > unselectedGreenTotal - 2;
+      }
       unselectedRedShown += 1;
-      return unselectedRedShown <= 3;
+      return unselectedRedShown <= 2;
     });
   }, [namesByYs, nowFromStartMs, myCompMs, myTimeMs, myYs]);
 

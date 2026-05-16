@@ -11,7 +11,7 @@ export interface BoatClass {
   category: BoatCategory;
 }
 
-export type AppPhase = 'welcome' | 'setup' | 'countdown' | 'race' | 'finished';
+export type AppPhase = 'welcome' | 'setup' | 'help' | 'countdown' | 'race' | 'finished';
 
 export const BOAT_CATEGORIES: BoatCategory[] = [
   'Jollen',

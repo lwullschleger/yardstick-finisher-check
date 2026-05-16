@@ -32,10 +32,13 @@ export function CountdownScreen() {
 
   return (
     <div className="flex-1 flex flex-col px-5 py-6">
-      <header className="text-center">
-        <p className="text-sm font-semibold uppercase tracking-wider text-slate-400">
-          Countdown alla partenza
-        </p>
+      <header className="space-y-3">
+        <div className="text-center">
+          <p className="text-sm font-semibold uppercase tracking-wider text-slate-400">
+            Procedura di pre-partenza
+          </p>
+        </div>
+        <SlideToConfirm label="Slide to Reset" variant="subtle" onConfirm={reset} />
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center gap-8">
@@ -51,10 +54,6 @@ export function CountdownScreen() {
           Tocca <strong>SYNC</strong> sul colpo del comitato: il countdown si allinea al minuto
           pieno più vicino del clock di sistema.
         </p>
-      </div>
-
-      <div className="mt-6">
-        <SlideToConfirm label="Slide to Reset" variant="subtle" onConfirm={reset} />
       </div>
     </div>
   );

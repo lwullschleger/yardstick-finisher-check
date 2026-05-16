@@ -34,7 +34,7 @@ export const ClassRow = memo(
         ref={ref}
         data-status={status}
         data-mine={isMine ? 'true' : undefined}
-        className={`flex items-center justify-between px-4 py-3 transition-colors duration-300 ${bgClass}`}
+        className={`flex items-center justify-between px-4 py-1.5 transition-colors duration-300 ${bgClass}`}
       >
         <div className="flex items-center gap-3 min-w-0">
           <span className="tabular text-xl font-mono font-bold w-[3.5ch] text-right shrink-0">

@@ -14,6 +14,7 @@ export function SetupScreen() {
   const removeOpponent = useRaceStore((s) => s.removeOpponent);
   const clearOpponents = useRaceStore((s) => s.clearOpponents);
   const goToWelcome = useRaceStore((s) => s.goToWelcome);
+  const goToHelp = useRaceStore((s) => s.goToHelp);
 
   const [picker, setPicker] = useState<PickerMode>(null);
 
@@ -43,12 +44,20 @@ export function SetupScreen() {
           >
             ‹
           </button>
-          <div>
-            <h1 className="text-xl font-bold text-slate-100 leading-tight">Setup regata</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-bold text-slate-100 leading-tight">Impostazioni</h1>
             <p className="text-sm text-slate-400 mt-0.5">
               Scegli la tua classe e gli avversari presenti.
             </p>
           </div>
+          <button
+            type="button"
+            onClick={goToHelp}
+            aria-label="Help"
+            className="h-11 w-11 flex items-center justify-center rounded-full bg-slate-800 border border-slate-700 text-slate-200 text-lg font-semibold shrink-0"
+          >
+            ?
+          </button>
         </header>
 
         <section className="space-y-3">
@@ -96,16 +105,9 @@ export function SetupScreen() {
         />
       </div>
 
-      <div className="sticky bottom-0 border-t border-slate-800 bg-slate-950/80 backdrop-blur px-5 py-4 safe-pb">
-        <button
-          type="button"
-          onClick={goToWelcome}
-          disabled={!myClass}
-          className="w-full h-14 rounded-xl font-semibold text-lg bg-emerald-600 text-white disabled:bg-slate-800 disabled:text-slate-500"
-        >
-          {myClass ? 'Fine setup' : 'Seleziona la tua classe per continuare'}
-        </button>
-      </div>
+      <footer className="text-center text-xs text-slate-500 px-5 py-3">
+        Versione {__APP_VERSION__} — © Luca Wullschleger
+      </footer>
 
       {picker && (
         <ClassPicker

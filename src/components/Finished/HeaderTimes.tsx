@@ -1,44 +1,46 @@
 import { formatDuration } from '../../lib/time';
-import type { BoatClass } from '../../types';
 
 interface Props {
-  myClass: BoatClass;
   myTimeMs: number;
   myCompMs: number;
   liveElapsedMs: number;
 }
 
-export function HeaderTimes({ myClass, myTimeMs, myCompMs, liveElapsedMs }: Props) {
+export function HeaderTimes({ myTimeMs, myCompMs, liveElapsedMs }: Props) {
+  const deltaMs = Math.max(0, liveElapsedMs - myTimeMs);
+  const showHoursAny =
+    myTimeMs >= 3_600_000 || myCompMs >= 3_600_000 || liveElapsedMs >= 3_600_000;
   return (
-    <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 grid grid-cols-3 gap-3 text-center">
-      <Stat
-        label="Mio tempo"
-        value={formatDuration(myTimeMs, { showHours: myTimeMs >= 3_600_000 })}
-        accent="text-slate-100"
-      />
-      <Stat
-        label="Mio compensato"
-        value={formatDuration(myCompMs, { showHours: myCompMs >= 3_600_000 })}
-        accent="text-emerald-400"
-      />
-      <Stat
-        label="Live"
-        value={formatDuration(liveElapsedMs, { showHours: liveElapsedMs >= 3_600_000 })}
-        accent="text-slate-300"
-      />
-      <div className="col-span-3 mt-1 text-xs text-slate-500">
-        Mia classe: <span className="text-slate-300 font-medium">{myClass.name}</span> ·{' '}
-        <span className="tabular font-mono text-emerald-400">YS {myClass.ys}</span>
+    <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex justify-center">
+      <div className="grid grid-cols-[auto_auto_auto_auto] gap-x-2 gap-y-1 items-baseline text-base">
+        <Label>Reale:</Label>
+        <Value accent="text-slate-100">
+          {formatDuration(myTimeMs, { showHours: showHoursAny })}
+        </Value>
+        <Label className="pl-6">Compensato:</Label>
+        <Value accent="text-emerald-400">
+          {formatDuration(myCompMs, { showHours: showHoursAny })}
+        </Value>
+
+        <Label>Live:</Label>
+        <Value accent="text-slate-300">
+          {formatDuration(liveElapsedMs, { showHours: showHoursAny })}
+        </Value>
+        <Label className="pl-6">Δ:</Label>
+        <Value accent="text-slate-300">
+          +{formatDuration(deltaMs, { showHours: showHoursAny })}
+        </Value>
       </div>
     </header>
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent: string }) {
+function Label({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <span className={`text-slate-500 text-right ${className}`}>{children}</span>;
+}
+
+function Value({ children, accent }: { children: React.ReactNode; accent: string }) {
   return (
-    <div className="flex flex-col items-center">
-      <span className="text-[10px] uppercase tracking-wider text-slate-500">{label}</span>
-      <span className={`tabular font-mono text-base font-bold ${accent}`}>{value}</span>
-    </div>
+    <span className={`tabular font-mono font-bold text-2xl text-left ${accent}`}>{children}</span>
   );
 }
