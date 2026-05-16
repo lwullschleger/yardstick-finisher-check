@@ -91,9 +91,9 @@ Tre chiavi `localStorage`:
 
 | Chiave | Contenuto | Quando si scrive |
 |---|---|---|
-| `yfc:lastMyClass` | `BoatClass` | a ogni `setMyClass` |
-| `yfc:opponents` | `BoatClass[]` | a ogni add/remove/clear |
-| `yfc:session` | `{ phase, countdownTargetMs, raceStartMs, finishedAtMs }` | start/sync/bump countdown, go-to-race, finish-race, reset (clear) |
+| `ysf:lastMyClass` | `BoatClass` | a ogni `setMyClass` |
+| `ysf:opponents` | `BoatClass[]` | a ogni add/remove/clear |
+| `ysf:session` | `{ phase, countdownTargetMs, raceStartMs, finishedAtMs }` | start/sync/bump countdown, go-to-race, finish-race, reset (clear) |
 
 Regole sessione:
 - **Scadenza 12h**: al boot, se la sessione persistita non è in `finished` e il timer più recente è > 12h fa, viene scartata. Evita che una regata dimenticata si presenti come "in corso" la settimana successiva.

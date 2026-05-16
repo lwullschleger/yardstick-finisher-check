@@ -6,12 +6,37 @@ import {
 } from '../lib/countdown';
 import type { AppPhase, BoatClass } from '../types';
 
-const LAST_MY_CLASS_KEY = 'yfc:lastMyClass';
-const OPPONENTS_KEY = 'yfc:opponents';
-const SESSION_KEY = 'yfc:session';
+const LAST_MY_CLASS_KEY = 'ysf:lastMyClass';
+const OPPONENTS_KEY = 'ysf:opponents';
+const SESSION_KEY = 'ysf:session';
 // Una sessione non-finished più vecchia di 12h al rientro viene scartata,
 // per evitare che una regata dimenticata si presenti come "in corso" alla regata successiva.
 const SESSION_MAX_AGE_MS = 12 * 3600 * 1000;
+
+// Migrazione one-shot: chiavi precedenti usavano il prefisso 'yfc:'.
+// Rinominate a 'ysf:' (= YS Finisher). Copia i valori vecchi se i nuovi non esistono, poi rimuove i vecchi.
+function migrateLegacyKeys(): void {
+  if (typeof localStorage === 'undefined') return;
+  const renames: Array<[string, string]> = [
+    ['yfc:lastMyClass', LAST_MY_CLASS_KEY],
+    ['yfc:opponents', OPPONENTS_KEY],
+    ['yfc:session', SESSION_KEY],
+  ];
+  for (const [oldKey, newKey] of renames) {
+    try {
+      const oldVal = localStorage.getItem(oldKey);
+      if (oldVal == null) continue;
+      if (localStorage.getItem(newKey) == null) {
+        localStorage.setItem(newKey, oldVal);
+      }
+      localStorage.removeItem(oldKey);
+    } catch {
+      // ignore
+    }
+  }
+}
+
+migrateLegacyKeys();
 
 function readJson<T>(key: string): T | null {
   if (typeof localStorage === 'undefined') return null;
